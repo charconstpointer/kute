@@ -1,17 +1,17 @@
 package kute
 
 import (
-	"context"
 	"net"
 )
 
 type Stream interface {
-	Recv(ctx context.Context) error
+	Replies() chan Msg
 	Send(msg Msg) error
 }
 
 type TCPStream struct {
 	conn   net.Conn
+	R      chan Msg
 	logger Logger
 }
 
@@ -19,12 +19,13 @@ func NewTCPStream(conn net.Conn, logger Logger) (Stream, error) {
 	stream := TCPStream{
 		conn:   conn,
 		logger: logger,
+		R:      make(chan Msg),
 	}
-	go stream.Recv(context.Background())
+	go stream.recv()
 	return &stream, nil
 }
 
-func (s *TCPStream) Recv(ctx context.Context) error {
+func (s *TCPStream) recv() error {
 	for {
 		b := make([]byte, 1024)
 		n, err := s.conn.Read(b)
@@ -32,7 +33,13 @@ func (s *TCPStream) Recv(ctx context.Context) error {
 			return err
 		}
 		s.logger.Infof("read %d bytes", n)
+		s.R <- Msg{H: make(Header, HeaderSize)}
+		s.logger.Infof("sent reply")
 	}
+}
+
+func (s *TCPStream) Replies() chan Msg {
+	return s.R
 }
 func (s *TCPStream) Send(msg Msg) error {
 	n, err := s.conn.Write(msg.H)

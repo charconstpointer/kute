@@ -2,6 +2,7 @@ package kute
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 
@@ -10,6 +11,7 @@ import (
 
 type Pipe interface {
 	Send(ctx context.Context, msg Msg) error
+	Reply(ctx context.Context, msg Msg) error
 	Run() error
 }
 
@@ -53,8 +55,19 @@ func NewBasicPipe(addr string, next string, name string) (Pipe, error) {
 }
 
 func (p *BasicPipe) Send(ctx context.Context, msg Msg) error {
-	p.logger.Infof("sending new msg %s", msg)
-	return p.out.Send(ctx, msg)
+	log.Printf("send in %v out %v", p.in, p.out)
+	if p.out != nil {
+		return p.out.Send(ctx, msg)
+	}
+	return errors.New("no more pipes")
+}
+
+func (p *BasicPipe) Reply(ctx context.Context, msg Msg) error {
+	log.Printf("reply in %v out %v", p.in, p.out)
+	if p.in != nil {
+		return p.in.Send(ctx, msg)
+	}
+	return errors.New("no more pipes")
 }
 
 func (p *BasicPipe) Run() error {
@@ -82,11 +95,8 @@ func (p *BasicPipe) recvPipe() error {
 	conn, err := listener.Accept()
 	p.logger.Infof("new pipe connected on %s", p.addr)
 	stream, err := NewTCPStream(conn, p.logger)
-	ending := SingleEnd{
-		stream: stream,
-		logger: p.logger,
-	}
-	p.in = &ending
+	ending, err := NewSingleEnd(p, stream, p.logger)
+	p.in = ending
 	return err
 }
 
@@ -94,11 +104,8 @@ func (p *BasicPipe) connPipe() error {
 	p.logger.Infof("trying to connect to pipe on %s", p.next)
 	conn, err := net.Dial("tcp", p.next)
 	stream, err := NewTCPStream(conn, p.logger)
-	ending := SingleEnd{
-		stream: stream,
-		logger: p.logger,
-	}
-	p.out = &ending
+	ending, err := NewSingleEnd(p, stream, p.logger)
+	p.out = ending
 	return err
 }
 
