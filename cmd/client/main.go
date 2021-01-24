@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/charconstpointer/kute/pkg/kute"
 )
@@ -23,4 +24,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+	time.Sleep(time.Second * 10)
 }
