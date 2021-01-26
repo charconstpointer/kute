@@ -91,20 +91,23 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 	return len(b), nil
 }
 
-type Ending struct {
+//EchoEnding is different type of a pipe
+//It modifies the content it receives
+//In this example it uppercases the payload
+type EchoEnding struct {
 	Prev   io.ReadWriter
 	b      []byte
 	sendCh chan Header
 }
 
-func NewEnding() (*Ending, error) {
-	return &Ending{
+func NewEchoEnding() (*EchoEnding, error) {
+	return &EchoEnding{
 		b:      make([]byte, 1024),
 		sendCh: make(chan Header),
 	}, nil
 }
 
-func (e *Ending) Run() error {
+func (e *EchoEnding) Run() error {
 	go func() {
 		for {
 			select {
@@ -123,12 +126,12 @@ func (e *Ending) Run() error {
 	return nil
 }
 
-func (e *Ending) Read(b []byte) (n int, err error) {
+func (e *EchoEnding) Read(b []byte) (n int, err error) {
 	b = e.b
 	return len(b), nil
 }
 
-func (e *Ending) Write(b []byte) (n int, err error) {
+func (e *EchoEnding) Write(b []byte) (n int, err error) {
 	h := Header(b)
 	e.b = h
 	h.Encode(REPL, h.Len(), h.ID(), []byte(strings.ToUpper(fmt.Sprintf("%s", h.Payload()))))
