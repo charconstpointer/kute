@@ -18,14 +18,12 @@ func main() {
 	end.Prev = middle
 	middle.Prev = start
 
-	start.Run()
-	middle.Run()
-	end.Run()
+	kute.RunAll(start, middle, end)
 
 	msg := make(kute.Header, kute.HeaderSize)
 	msg.Encode(kute.PASS, kute.HeaderSize, 1, []byte("kute"))
 	start.Write(msg)
-	time.Sleep(3 * time.Second)
+	time.Sleep(time.Second)
 	b := make([]byte, 1024)
 
 	n, err := start.Read(b)

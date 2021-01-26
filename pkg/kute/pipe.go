@@ -11,14 +11,27 @@ import (
 type Runner interface {
 	Run() error
 }
+
+//Pipe is an implementation of io.ReaderWriter, it allows you to send messages wrapped in Header struct
+//You can combine as many pipes as you like
+//Since net.Conn implements io.ReaderWriter as well, you are not limited to a single machine
+//But should probably use io.ReaderWriterCloser for that
 type Pipe struct {
+	//Name of this pipe, helps debugging
 	name string
 
+	//Other pipes connected to this pipe
+	//This is how imagine this in my head
+	//prev -> [this] <- next -> [this] <- next
 	Next io.ReadWriter
 	Prev io.ReadWriter
 
+	//SendCh handles async writes to a pipe, if you think about it, this is required step
+	//Because Pipe invokes another Pipe's Write, this chain would never end
 	sendCh chan Header
-	buf    []byte
+
+	//Buffer for storing messages
+	buf []byte
 }
 
 func NewPipe(name string) (*Pipe, error) {
@@ -28,6 +41,7 @@ func NewPipe(name string) (*Pipe, error) {
 		buf:    make([]byte, 1024),
 	}, nil
 }
+
 func (p *Pipe) Run() error {
 	go func() {
 		for {
@@ -89,7 +103,8 @@ func NewEnding() (*Ending, error) {
 		sendCh: make(chan Header),
 	}, nil
 }
-func (e *Ending) Run() {
+
+func (e *Ending) Run() error {
 	go func() {
 		for {
 			select {
@@ -105,15 +120,24 @@ func (e *Ending) Run() {
 		}
 
 	}()
+	return nil
 }
+
 func (e *Ending) Read(b []byte) (n int, err error) {
 	b = e.b
 	return len(b), nil
 }
+
 func (e *Ending) Write(b []byte) (n int, err error) {
 	h := Header(b)
 	e.b = h
 	h.Encode(REPL, h.Len(), h.ID(), []byte(strings.ToUpper(fmt.Sprintf("%s", h.Payload()))))
 	e.sendCh <- h
 	return len(b), nil
+}
+
+func RunAll(runners ...Runner) {
+	for _, runner := range runners {
+		runner.Run()
+	}
 }
