@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"time"
 
@@ -9,20 +8,30 @@ import (
 )
 
 func main() {
-	msg := kute.Msg{
-		H: make(kute.Header, kute.HeaderSize),
-	}
 
-	firstPipe, err := kute.NewBasicPipe("", ":9001", "first pipe")
-	secondPipe, err := kute.NewBasicPipe(":9001", "", "next pipe")
+	end, _ := kute.NewEnding()
+	middle, _ := kute.NewPipe("middle")
+	start, _ := kute.NewPipe("start")
 
-	if err := kute.RunPipes(context.Background(), firstPipe, secondPipe); err != nil {
-		log.Fatal("unable to configure and run given pipe structure")
-	}
+	start.Next = middle
+	middle.Next = end
+	end.Prev = middle
+	middle.Prev = start
 
-	err = firstPipe.Send(context.Background(), msg)
+	start.Run()
+	middle.Run()
+	end.Run()
+
+	msg := make(kute.Header, kute.HeaderSize)
+	msg.Encode(kute.PASS, kute.HeaderSize, 1, []byte("kute"))
+	start.Write(msg)
+	time.Sleep(3 * time.Second)
+	b := make([]byte, 1024)
+
+	n, err := start.Read(b)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	time.Sleep(time.Second * 10)
+	log.Printf("%s", b[:n])
+	time.Sleep(123312 * time.Second)
 }
