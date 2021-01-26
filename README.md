@@ -29,7 +29,7 @@ start.Write(msg)
 time.Sleep(time.Second)
 b := make([]byte, 1024)
 
-//message will have come back at this point and should be uppercase, because Ending end have modified it
+//message will have come back at this point and should be uppercase, because EchoEnding have modified it
 n, err := start.Read(b)
 if err != nil {
   log.Fatal(err.Error())
