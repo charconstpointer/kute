@@ -4,7 +4,7 @@
 ```
 start, _ := kute.NewPipe("start")
 middle, _ := kute.NewPipe("middle")
-end, _ := kute.NewEnding()
+end, _ := kute.NewEchoEnding()
 //[start] -> [middle] -> [end]
 
 start.Next = middle
