@@ -12,6 +12,7 @@ func main() {
 	start, _ := kute.NewPipe("start")
 	middle, _ := kute.NewPipe("middle")
 	end, _ := kute.NewEnding()
+
 	//[start] -> [middle] -> [end]
 	start.Next = middle
 
