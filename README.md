@@ -1,4 +1,4 @@
-#kute, messaging pipelines 🚀
+# kute, messaging pipelines 🚀
 
 ### Design your pipeline 🎨
 ```
