@@ -15,13 +15,14 @@ const (
 	REPL
 )
 
-func (h Header) Encode(mtype MessageType, len uint32, id uint32, payload []byte) {
+func (h Header) Encode(mtype MessageType, lenx uint32, id uint32, payload []byte) {
 	binary.BigEndian.PutUint16(h[0:2], uint16(mtype))
-	binary.BigEndian.PutUint32(h[2:6], len)
+
 	binary.BigEndian.PutUint32(h[6:10], id)
 	for i, b := range payload {
 		h[10+i] = b
 	}
+	binary.BigEndian.PutUint32(h[2:6], 10+uint32(len(payload)))
 }
 
 func (h Header) MessageType() MessageType {
