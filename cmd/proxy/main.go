@@ -2,20 +2,17 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/charconstpointer/kute/pkg/kute"
 )
 
 func main() {
 	m := kute.NewMux()
-	if err := m.Dial(":8000"); err != nil {
+	if err := m.ListenMux(":8000"); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	if err := m.Recv(); err != nil {
+	if err := m.Listen(":9000"); err != nil {
 		log.Fatal(err.Error())
 	}
-
-	time.Sleep(time.Hour)
 }
