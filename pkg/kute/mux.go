@@ -1,12 +1,15 @@
 package kute
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
@@ -67,26 +70,38 @@ func (m *Mux) Listen(addr string) error {
 
 func (m *Mux) Recv() error {
 	for {
-		b := make([]byte, 32*1024)
-		n, err := m.next.Read(b)
+
+		h := Header(make([]byte, HeaderSize))
+		n, err := io.ReadFull(m.next, h)
+		id := h.ID()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		log.Println(n, h.ID(), h.Len())
+
+		b := make([]byte, int(h.Len()))
+		log.Println("next should be", h.Len())
+		n, err = io.ReadFull(m.next, b)
 		if err != nil {
 			return err
 		}
 
 		if n > 0 {
-			h := Header(b[:n])
-			c, e := m.clients[int(h.ID())]
+			// h := Header(b[:n])
+			c, e := m.clients[int(id)]
 			if !e {
 				conn, err := net.Dial("tcp", ":25565")
 				if err != nil {
 					log.Println("cannot dial minecraft", err.Error())
 					return err
 				}
-				m.clients[int(h.ID())] = conn
-				go m.handleConn(conn, int(h.ID()))
+				m.clients[int(id)] = conn
+				log.Println("h", id)
+				go m.handleConn(conn, int(id))
+				time.Sleep(time.Millisecond * 100)
 			}
-			c = m.clients[int(h.ID())]
-			n, err := c.Write(h.Payload()[:int(h.Len())])
+			c = m.clients[int(id)]
+			io.Copy(c, bytes.NewBuffer(b))
 			if err != nil {
 				log.Println("cannot write payload to minecraft")
 			}
@@ -103,7 +118,7 @@ func (m *Mux) handleConn(conn net.Conn, id int) error {
 	//id := getID(conn.RemoteAddr().String())
 	log.Printf("handling new conn %s", conn.RemoteAddr().String())
 	for {
-		b := make([]byte, 32*1024)
+		b := make([]byte, 1024)
 		nr, err := conn.Read(b)
 
 		if err != nil {
@@ -112,19 +127,15 @@ func (m *Mux) handleConn(conn net.Conn, id int) error {
 
 		if nr > 0 {
 			h := make(Header, HeaderSize)
-			h.Encode(PASS, int32(id), b[:nr])
-			nw, err := m.next.Write(h)
-			if nr != int(h.Len()) {
-				log.Println("nr != nw", nr, nw, h.Len())
+			h.Encode(PASS, int32(id), int32(nr))
+			sent := 0
+			for sent < HeaderSize {
+				n, _ := m.next.Write(h)
+				sent += n
 			}
-			if err != nil {
-				log.Println(err.Error())
-				return errors.Wrap(err, "cannot write message from handled connection")
-			}
-			if nw != len(h) {
-				log.Println("len not right :L")
-			}
-			log.Printf("wrote %d bytes from %d", nw, id)
+
+			_, _ = io.Copy(m.next, bytes.NewReader(b[:nr]))
+
 		}
 	}
 }
