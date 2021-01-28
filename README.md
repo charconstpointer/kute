@@ -27,7 +27,7 @@ msg.Encode(kute.PASS, kute.HeaderSize, 1, []byte("kute"))
 //send it down the pipe
 start.Write(msg)
 time.Sleep(time.Second)
-b := make([]byte, 32*1024)
+b := make([]byte, 1024)
 
 //message will have come back at this point and should be uppercase, because EchoEnding have modified it
 n, err := start.Read(b)
